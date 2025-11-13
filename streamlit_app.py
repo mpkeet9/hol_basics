@@ -9,7 +9,7 @@ st.set_page_config(
 
 # Title and description
 st.title("❄️ Snowflake Security Configuration Examples")
-st.markdown("### Interactive guides for Snowflake security best practices")
+st.markdown("### Interactive guides for Snowflake security setup")
 st.markdown("---")
 
 # Introduction

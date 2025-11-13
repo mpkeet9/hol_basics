@@ -24,19 +24,21 @@ with col1:
     )
 
 with col2:
-    allowed_ips = st.text_input(
-        "Allowed IP Range",
+    allowed_ips_input = st.text_area(
+        "Allowed IP Ranges",
         value="192.0.0.1/24",
-        help="CIDR notation for allowed IPs (e.g., 192.0.0.1/24)"
+        height=100,
+        help="Enter one or more IPs/CIDR ranges (comma-separated or one per line)\nExample: 192.0.0.1/24, 10.0.0.0/16"
     )
 
 col3, col4 = st.columns(2)
 
 with col3:
-    blocked_ip = st.text_input(
-        "Blocked IP",
+    blocked_ips_input = st.text_area(
+        "Blocked IPs",
         value="184.0.23.212",
-        help="Single IP address to block"
+        height=100,
+        help="Enter one or more IPs to block (comma-separated or one per line)\nExample: 184.0.23.212, 192.168.1.100"
     )
 
 with col4:
@@ -48,8 +50,23 @@ with col4:
         help="Idle timeout for user sessions"
     )
 
+# Parse IP inputs to handle both comma-separated and newline-separated lists
+def parse_ip_list(ip_input):
+    """Parse IP input string into a list of IPs, handling commas and newlines"""
+    if not ip_input:
+        return []
+    # Replace newlines with commas, then split by comma
+    ips = ip_input.replace('\n', ',').split(',')
+    # Strip whitespace and filter out empty strings
+    ips = [ip.strip() for ip in ips if ip.strip()]
+    return ips
+
 # Only show content if company name is provided
 if company_name:
+    # Parse the IP inputs
+    allowed_ips_list = parse_ip_list(allowed_ips_input)
+    blocked_ips_list = parse_ip_list(blocked_ips_input)
+    
     st.markdown("---")
     
     # Create tabs for different views
@@ -69,9 +86,13 @@ if company_name:
         
         col1, col2 = st.columns(2)
         with col1:
-            st.success(f"✅ **Allowed IPs:** {allowed_ips}")
+            st.success(f"✅ **Allowed IPs:** {len(allowed_ips_list)} range(s)")
+            for ip in allowed_ips_list:
+                st.markdown(f"   • `{ip}`")
         with col2:
-            st.error(f"🚫 **Blocked IP:** {blocked_ip}")
+            st.error(f"🚫 **Blocked IPs:** {len(blocked_ips_list)} IP(s)")
+            for ip in blocked_ips_list:
+                st.markdown(f"   • `{ip}`")
         
         st.markdown("---")
         
@@ -107,6 +128,51 @@ if company_name:
         st.subheader("Generated SQL Script")
         st.markdown("This script sets up the complete security perimeter for your Snowflake account.")
         
+        # Format IP lists for SQL VALUE_LIST
+        allowed_ips_sql = ", ".join([f"'{ip}'" for ip in allowed_ips_list])
+        blocked_ips_sql = ", ".join([f"'{ip}'" for ip in blocked_ips_list])
+        
+        # Generate network rules SQL (only if IPs are provided)
+        allowed_rule_sql = ""
+        blocked_rule_sql = ""
+        allowed_rule_list = ""
+        blocked_rule_list = ""
+        
+        if allowed_ips_list:
+            allowed_rule_sql = f"""
+CREATE NETWORK RULE SECURITY_SCHEMA.{company_name}_allowed_ips
+    TYPE = IPV4
+    VALUE_LIST = ({allowed_ips_sql})
+    MODE = INGRESS
+    COMMENT = 'Allow access from specified IPs and subnets (VPN for instance)';
+"""
+            allowed_rule_list = f"    ALLOWED_NETWORK_RULE_LIST = ({company_name}_allowed_ips)"
+        
+        if blocked_ips_list:
+            blocked_rule_sql = f"""
+CREATE NETWORK RULE SECURITY_SCHEMA.{company_name}_blocked_ips
+    TYPE = IPV4
+    VALUE_LIST = ({blocked_ips_sql})
+    MODE = INGRESS
+    COMMENT = 'Block access from specified IPs';
+"""
+            blocked_rule_list = f"    BLOCKED_NETWORK_RULE_LIST = ({company_name}_blocked_ips)"
+        
+        # Build the network policy clause
+        network_policy_clauses = []
+        if allowed_rule_list:
+            network_policy_clauses.append(allowed_rule_list)
+        if blocked_rule_list:
+            network_policy_clauses.append(blocked_rule_list)
+        
+        network_policy_sql = ""
+        if network_policy_clauses:
+            network_policy_sql = f"""
+CREATE OR REPLACE NETWORK POLICY {company_name}_network_policy
+{chr(10).join(network_policy_clauses)}
+    COMMENT = 'Network policy for {company_name}';
+"""
+        
         # Generate the SQL with replacements
         sql_script = f"""-- ============================================================================
 -- 1. PREPPING THE ROLE SECURITY CONFIGURATION
@@ -138,23 +204,7 @@ USE ROLE SECURITYADMIN;
 -- Network rules define access controls for external network locations
 -- (used with external access integrations for data egress)
 -- Ref: https://docs.snowflake.com/en/sql-reference/sql/create-network-rule
-
-CREATE NETWORK RULE SECURITY_SCHEMA.{company_name}_allowed_ips
-    TYPE = IPV4
-    VALUE_LIST = ('{allowed_ips}')
-    MODE = INGRESS
-    COMMENT = 'Allow access from specified IPs and subnets (VPN for instance)';
-
-CREATE NETWORK RULE SECURITY_SCHEMA.{company_name}_blocked_ips
-    TYPE = IPV4
-    VALUE_LIST = ('{blocked_ip}')
-    MODE = INGRESS
-    COMMENT = 'Block access from specified IPs';
-
-CREATE OR REPLACE NETWORK POLICY {company_name}_network_policy
-    ALLOWED_NETWORK_RULE_LIST = ({company_name}_allowed_ips)
-    BLOCKED_NETWORK_RULE_LIST = ({company_name}_blocked_ips)
-    COMMENT = 'Network policy for {company_name}';
+{allowed_rule_sql}{blocked_rule_sql}{network_policy_sql}
 
     
 
