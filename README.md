@@ -5,13 +5,14 @@ This repo holds a streamlit app aimed at illustrating the concepts of network pe
 python-graphviz
 # Quick Setup
 ## 1. Run Setup Script
-```-- Execute the complete setup script
+`-- Execute the complete setup script
 -- File: Setup.sql
 -- This creates the entire environment including:
 -- - Database and schemas
 -- - Roles and permissions  
 -- - Git integration
--- - Streamlit application```
+-- - Streamlit application`
+
 ## 2. Access the Application
 1. Set your Snowflake context as ACCOUNTADMIN
 2. Navigate to Projects -> Streamlit
