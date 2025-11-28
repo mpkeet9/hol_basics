@@ -7,7 +7,7 @@
 --
 -- Requirements:
 -- - ACCOUNTADMIN role to create roles, databases, and integrations
--- - Git repository: https://github.com/kfir-liron-snowflake/SI_Data_Generator
+-- - Git repository: https://github.com/mpkeet9/sf_account_basics_educational_app.git
 -- ================================================================================
 
 USE ROLE ACCOUNTADMIN;
