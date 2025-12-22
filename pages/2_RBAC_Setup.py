@@ -278,17 +278,22 @@ WITH
 CREATE DATABASE IF NOT EXISTS {database_name}
     COMMENT = 'Marketing production CRM database with private access.';
 
-
-USE ROLE SECURITYADMIN;
+-- Use USERADMIN to create roles
+USE ROLE USERADMIN;
 
 -- Create functional roles to manage the database
 CREATE OR REPLACE ROLE RL_{database_name}_ADMIN;
+
+-- Use SECURITYADMIN to perform grants
+USE ROLE SECURITYADMIN;
 
 -- Grant the role to the proper user
 GRANT ROLE RL_{database_name}_ADMIN TO USER IDENTIFIER($user_name);;
 
 -- Platform admin changes ownership to the DB_ADMIN role
 GRANT OWNERSHIP ON DATABASE {database_name} TO ROLE RL_{database_name}_ADMIN;
+-- GRANT RL_{database_name}_ADMIN to allow ownership transfers
+GRANT ROLE RL_{database_name}_ADMIN TO ROLE SYSADMIN;
 
 -- Create Database Roles
 USE ROLE RL_{database_name}_ADMIN;
@@ -379,7 +384,7 @@ GRANT DATABASE ROLE DB_R_DBR_{database_name} TO DATABASE ROLE SC_W_DBR_{database
 
 
 -- Create account level roles
-USE ROLE SECURITYADMIN;
+USE ROLE USERADMIN;
 
 CREATE OR REPLACE ROLE {database_name}_ANALYST;
 CREATE OR REPLACE ROLE {database_name}_DEVELOPER;
@@ -388,6 +393,8 @@ CREATE OR REPLACE ROLE {database_name}_SUPPORT;
 -- grant schema roles to account roles
 USE ROLE RL_{database_name}_ADMIN;
 USE DATABASE {database_name};
+
+USE ROLE RL_{database_name}_ADMIN;
 
 GRANT DATABASE ROLE SC_R_DBR_{database_name} TO ROLE {database_name}_ANALYST;
 GRANT DATABASE ROLE SC_C_DBR_{database_name} TO ROLE {database_name}_SUPPORT;
@@ -409,14 +416,14 @@ GRANT ROLE {database_name}_SUPPORT TO USER IDENTIFIER($user_name);
 SHOW GRANTS ON DATABASE {database_name};
 SHOW GRANTS ON SCHEMA {database_name}.{schema_name};
 
--- USE ROLE SECURITYADMIN;
+-- USE ROLE USERADMIN;
 -- DROP ROLE IF EXISTS {database_name}_ANALYST;
 -- DROP ROLE IF EXISTS {database_name}_DEVELOPER;
 -- DROP ROLE IF EXISTS {database_name}_SUPPORT;
 
 -- USE ROLE RL_{database_name}_ADMIN;
 -- DROP DATABASE IF EXISTS {database_name};
--- USE ROLE SECURITYADMIN;
+-- USE ROLE USERADMIN;
 -- DROP ROLE IF EXISTS RL_{database_name}_ADMIN;
 """
         
